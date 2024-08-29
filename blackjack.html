@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Blackjack</title>
+    <style>
+        /* General body styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        /* Game container styling */
+        #game-container {
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        /* Styling for the hands (dealer and player) */
+        #dealer-hand, #player-hand {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative; /* For card positioning */
+        }
+        /* Styling for individual cards */
+        .card {
+            width: 80px;
+            height: 120px;
+            background-color: #fff;
+            border-radius: 5px;
+            margin: 0 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #2c3e50;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.3s, opacity 0.3s;
+            opacity: 0;
+            transform: scale(0);
+        }
+        /* Styling for red cards */
+        .red {
+            color: #e74c3c;
+        }
+        /* Styling for control buttons */
+        #controls {
+            display: flex;
+            justify-content: center;
+        }
+        button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        /* Styling for game messages */
+        #message {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+		#header-text {
+			text-align: center;
+		}
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1 id="header-text">Classic Blackjack</h1>
+        <!-- Hands for dealer and player -->
+        <div id="dealer-hand"></div>
+        <div id="player-hand"></div>
+        <!-- Control buttons -->
+        <div id="controls">
+            <button id="hit-button">Hit</button>
+            <button id="stand-button">Stand</button>
+            <button id="new-game-button">New Game</button>
+        </div>
+        <!-- Message area -->
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // Define suits and values for the deck
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+        let deck = [];         // Deck of cards
+        let dealerHand = [];   // Cards in the dealer's hand
+        let playerHand = [];   // Cards in the player's hand
+        let gameOver = false;  // Game over status
+
+        // Get DOM elements
+        const hitButton = document.getElementById('hit-button');
+        const standButton = document.getElementById('stand-button');
+        const newGameButton = document.getElementById('new-game-button');
+        const messageElement = document.getElementById('message');
+        const dealerHandElement = document.getElementById('dealer-hand');
+        const playerHandElement = document.getElementById('player-hand');
+
+        // Create a new deck of cards
+        function createDeck() {
+            deck = [];
+            for (let suit of suits) {
+                for (let value of values) {
+                    deck.push({ suit, value });
+                }
+            }
+        }
+
+        // Shuffle the deck using the Fisher-Yates algorithm
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        // Deal a card from the deck
+        function dealCard() {
+            return deck.pop();
+        }
+
+        // Get the value of a card
+        function getCardValue(card) {
+            if (['J', 'Q', 'K'].includes(card.value)) return 10;
+            if (card.value === 'A') return 11;
+            return parseInt(card.value);
+        }
+
+        // Calculate the total value of a hand
+        function calculateHandValue(hand) {
+            let value = 0;
+            let aces = 0;
+            for (let card of hand) {
+                value += getCardValue(card);
+                if (card.value === 'A') aces++;
+            }
+            while (value > 21 && aces > 0) {
+                value -= 10;
+                aces--;
+            }
+            return value;
+        }
+
+        // Render a card element with animation
+        function renderCard(card) {
+            const cardElement = document.createElement('div');
+            cardElement.className = `card ${['♥', '♦'].includes(card.suit) ? 'red' : ''}`;
+            cardElement.textContent = `${card.value}${card.suit}`;
+            
+            // Add card to the DOM and animate
+            document.body.appendChild(cardElement);
+            setTimeout(() => {
+                cardElement.style.opacity = 1;
+                cardElement.style.transform = 'scale(1)';
+            }, 10);
+            
+            return cardElement;
+        }
+
+        // Render a hand of cards with animation
+        function renderHand(hand, element) {
+            element.innerHTML = '';
+            for (let card of hand) {
+                const cardElement = renderCard(card);
+                element.appendChild(cardElement);
+            }
+        }
+
+        // Start a new game
+        function startNewGame() {
+            createDeck();
+            shuffleDeck();
+            dealerHand = [dealCard()];
+            playerHand = [dealCard(), dealCard()];
+            gameOver = false;
+            hitButton.disabled = false;
+            standButton.disabled = false;
+            renderHand(dealerHand, dealerHandElement);
+            renderHand(playerHand, playerHandElement);
+            messageElement.textContent = '';
+        }
+
+        // Player chooses to hit (take another card)
+        function hit() {
+            playerHand.push(dealCard());
+            renderHand(playerHand, playerHandElement);
+            if (calculateHandValue(playerHand) > 21) {
+                endGame('Player busts! Dealer wins.');
+            }
+        }
+
+        // Player chooses to stand (end their turn)
+        function stand() {
+            while (calculateHandValue(dealerHand) < 17) {
+                dealerHand.push(dealCard());
+            }
+            renderHand(dealerHand, dealerHandElement);
+            const playerValue = calculateHandValue(playerHand);
+            const dealerValue = calculateHandValue(dealerHand);
+            if (dealerValue > 21) {
+                endGame('Dealer busts! Player wins.');
+            } else if (playerValue > dealerValue) {
+                endGame('Player wins!');
+            } else if (dealerValue > playerValue) {
+                endGame('Dealer wins!');
+            } else {
+                endGame('It\'s a tie!');
+            }
+        }
+
+        // End the game and display a message
+        function endGame(message) {
+            gameOver = true;
+            hitButton.disabled = true;
+            standButton.disabled = true;
+            messageElement.textContent = message;
+        }
+
+        // Event listeners for buttons
+        hitButton.addEventListener('click', hit);
+        standButton.addEventListener('click', stand);
+        newGameButton.addEventListener('click', startNewGame);
+
+        // Start the game when the page loads
+        startNewGame();
+    </script>
+</body>
+</html>
