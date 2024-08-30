@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta tags for character encoding and responsiveness -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Checkers Game</title>
+    <!-- Styling for the game -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .game-container {
+            text-align: center;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 1px;
+            border: 2px solid #333;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .black {
+            background-color: #769656;
+        }
+        .white {
+            background-color: #eeeed2;
+        }
+        .piece {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .red {
+            background-color: #d73232;
+        }
+        .blue {
+            background-color: #3232d7;
+        }
+        /* Styling for King pieces */
+        .king::after {
+            content: '♔';
+            font-size: 24px;
+            color: #fff;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Game container with title and board -->
+    <div class="game-container">
+        <h1>Classic Checkers</h1>
+        <div class="board" id="board"></div>
+        <div id="status">Red's turn</div>
+    </div>
+
+    <script>
+        // Initialize variables
+        const board = document.getElementById('board');
+        const status = document.getElementById('status');
+        let currentPlayer = 'red';  // Track current player
+        let selectedPiece = null;   // Track selected piece
+        let gameBoard = [];         // Array to represent the board state
+
+        // Initialize the board with cells and pieces
+        function initializeBoard() {
+            for (let row = 0; row < 8; row++) {
+                gameBoard[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    // Set cell color based on position
+                    cell.classList.add((row + col) % 2 === 0 ? 'white' : 'black');
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', handleCellClick);
+                    board.appendChild(cell);
+
+                    let piece = null;
+                    // Place red and blue pieces in their initial positions
+                    if ((row + col) % 2 !== 0) {
+                        if (row < 3) {
+                            piece = createPiece('red');
+                        } else if (row > 4) {
+                            piece = createPiece('blue');
+                        }
+                    }
+                    gameBoard[row][col] = piece;
+                    if (piece) cell.appendChild(piece);
+                }
+            }
+        }
+
+        // Create a piece element with the specified color
+        function createPiece(color) {
+            const piece = document.createElement('div');
+            piece.classList.add('piece', color);
+            return piece;
+        }
+
+        // Handle cell clicks for selecting and moving pieces
+        function handleCellClick(event) {
+            const cell = event.target.classList.contains('cell') ? event.target : event.target.parentElement;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+
+            if (selectedPiece) {
+                // If a piece is selected, attempt to move it
+                movePiece(row, col);
+            } else {
+                // Otherwise, select a piece
+                selectPiece(row, col);
+            }
+        }
+
+        // Select a piece if it's the current player's piece
+        function selectPiece(row, col) {
+            const piece = gameBoard[row][col];
+            if (piece && piece.classList.contains(currentPlayer)) {
+                selectedPiece = {row, col};
+                piece.style.boxShadow = '0 0 10px 5px yellow'; // Highlight selected piece
+            }
+        }
+
+        // Move the selected piece to a new cell if the move is valid
+        function movePiece(toRow, toCol) {
+            const fromRow = selectedPiece.row;
+            const fromCol = selectedPiece.col;
+            const piece = gameBoard[fromRow][fromCol];
+
+            if (isValidMove(fromRow, fromCol, toRow, toCol)) {
+                // Update board state
+                gameBoard[toRow][toCol] = piece;
+                gameBoard[fromRow][fromCol] = null;
+
+                const fromCell = board.children[fromRow * 8 + fromCol];
+                const toCell = board.children[toRow * 8 + toCol];
+
+                fromCell.removeChild(piece);
+                toCell.appendChild(piece);
+
+                // Capture logic for jumping over an opponent's piece
+                if (Math.abs(toRow - fromRow) === 2) {
+                    const capturedRow = (fromRow + toRow) / 2;
+                    const capturedCol = (fromCol + toCol) / 2;
+                    const capturedCell = board.children[capturedRow * 8 + capturedCol];
+                    capturedCell.removeChild(gameBoard[capturedRow][capturedCol]);
+                    gameBoard[capturedRow][capturedCol] = null;
+                }
+
+                // Promote to king if reaching the opposite side
+                if ((currentPlayer === 'red' && toRow === 7) || (currentPlayer === 'blue' && toRow === 0)) {
+                    piece.classList.add('king');
+                }
+
+                // Switch player turn
+                currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+                status.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s turn`;
+            }
+
+            // Deselect piece and clear highlights
+            selectedPiece = null;
+            clearHighlights();
+        }
+
+        // Validate if a move is legal based on the rules of checkers
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            const piece = gameBoard[fromRow][fromCol];
+            const isKing = piece.classList.contains('king');
+
+            // Check if the target cell is empty
+            if (gameBoard[toRow][toCol] !== null) return false;
+
+            const rowDiff = toRow - fromRow;
+            const colDiff = toCol - fromCol;
+
+            // Simple diagonal move by 1 cell
+            if (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 1) {
+                return isKing || (currentPlayer === 'red' && rowDiff > 0) || (currentPlayer === 'blue' && rowDiff < 0);
+            }
+
+            // Jump move (capture)
+            if (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2) {
+                const jumpedRow = (fromRow + toRow) / 2;
+                const jumpedCol = (fromCol + toCol) / 2;
+                const jumpedPiece = gameBoard[jumpedRow][jumpedCol];
+
+                return jumpedPiece && !jumpedPiece.classList.contains(currentPlayer) &&
+                       (isKing || (currentPlayer === 'red' && rowDiff > 0) || (currentPlayer === 'blue' && rowDiff < 0));
+            }
+
+            return false;
+        }
+
+        // Clear all piece highlights (used when deselecting)
+        function clearHighlights() {
+            document.querySelectorAll('.piece').forEach(piece => {
+                piece.style.boxShadow = 'none';
+            });
+        }
+
+        // Initialize the game board when the page loads
+        initializeBoard();
+    </script>
+</body>
+</html>
