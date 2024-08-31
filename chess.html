@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <style>
+        /* Basic styling for the body to center the chessboard on the screen */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        /* Styling for the chessboard container */
+        #chessboard {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #333;
+        }
+
+        /* Styling for each square on the chessboard */
+        .square {
+            width: 12.5%;
+            height: 12.5%;
+            float: left;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            cursor: pointer;
+        }
+
+        /* Colors for white and black squares */
+        .white {
+            background-color: #f0d9b5;
+        }
+        .black {
+            background-color: #b58863;
+        }
+
+        /* Highlight styles for selected square and possible moves */
+        .selected {
+            background-color: #7fff00;
+        }
+        .possible-move {
+            background-color: #7fbfff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Chessboard container -->
+    <div id="chessboard"></div>
+
+    <!-- Load the Chess.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script>
+        const board = document.getElementById('chessboard'); // Chessboard element
+        const chess = new Chess(); // Initialize a new chess game
+        let selectedSquare = null; // Track the currently selected square
+
+        // Function to create the chessboard UI
+        function createBoard() {
+            for (let i = 0; i < 64; i++) {
+                const square = document.createElement('div');
+                // Assign white or black class based on the position
+                square.className = `square ${(i + Math.floor(i / 8)) % 2 === 0 ? 'white' : 'black'}`;
+                // Set the data-square attribute to the chess notation (e.g., 'a1', 'b2')
+                square.dataset.square = String.fromCharCode(97 + (i % 8)) + (8 - Math.floor(i / 8));
+                // Add click event listener to handle square clicks
+                square.addEventListener('click', onSquareClick);
+                board.appendChild(square); // Add the square to the chessboard
+            }
+            updateBoard(); // Populate the board with pieces
+        }
+
+        // Function to update the board UI based on the current game state
+        function updateBoard() {
+            const squares = board.getElementsByClassName('square');
+            for (let square of squares) {
+                const piece = chess.get(square.dataset.square); // Get piece on this square
+                // Set the innerHTML to the piece's Unicode character or empty if no piece
+                square.innerHTML = piece ? getPieceUnicode(piece.type, piece.color) : '';
+            }
+        }
+
+        // Function to get the Unicode character for a piece
+        function getPieceUnicode(piece, color) {
+            const pieces = {
+                'k': ['♔', '♚'],
+                'q': ['♕', '♛'],
+                'r': ['♖', '♜'],
+                'b': ['♗', '♝'],
+                'n': ['♘', '♞'],
+                'p': ['♙', '♟']
+            };
+            // Return the white or black piece based on color
+            return pieces[piece][color === 'w' ? 0 : 1];
+        }
+
+        // Function to handle square clicks
+        function onSquareClick(event) {
+            const square = event.target.dataset.square; // Get the clicked square
+            if (selectedSquare) {
+                // Try to make a move from the selected square to the clicked square
+                const move = chess.move({
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q' // Auto-promote pawns to queens
+                });
+                if (move) {
+                    updateBoard(); // Update the board after a valid move
+                    // Check if the game is over
+                    if (chess.game_over()) {
+                        alert(chess.in_checkmate() ? `Checkmate! ${chess.turn() === 'w' ? 'Black' : 'White'} wins!` : 'Game over!');
+                    }
+                }
+                clearHighlights(); // Clear highlights after the move
+                selectedSquare = null; // Reset the selected square
+            } else {
+                const piece = chess.get(square); // Get the piece on the clicked square
+                // If the piece belongs to the current player
+                if (piece && piece.color === chess.turn()) {
+                    selectedSquare = square; // Set this square as selected
+                    highlightSquare(square); // Highlight the selected square
+                    highlightPossibleMoves(square); // Highlight possible moves for this piece
+                }
+            }
+        }
+
+        // Function to clear all highlights from the board
+        function clearHighlights() {
+            const squares = board.getElementsByClassName('square');
+            for (let square of squares) {
+                square.classList.remove('selected', 'possible-move');
+            }
+        }
+
+        // Function to highlight the selected square
+        function highlightSquare(square) {
+            const squareElement = board.querySelector(`[data-square="${square}"]`);
+            squareElement.classList.add('selected');
+        }
+
+        // Function to highlight all possible moves for a selected piece
+        function highlightPossibleMoves(square) {
+            const moves = chess.moves({square: square, verbose: true});
+            for (let move of moves) {
+                const squareElement = board.querySelector(`[data-square="${move.to}"]`);
+                squareElement.classList.add('possible-move');
+            }
+        }
+
+        // Initialize the chessboard when the page loads
+        createBoard();
+    </script>
+</body>
+</html>
